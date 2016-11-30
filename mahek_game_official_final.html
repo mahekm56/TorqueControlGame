@@ -1,0 +1,1312 @@
+
+<html>
+<head>
+	<title>Can you control the torque?</title>
+</head>
+<body onload="init(false, 0, '');">
+<!--aspect ratio for HD is 16:9 -->
+<!--<button type="button" onclick="init(true, 60, '1')">Start</button> -->
+<!--<button type="button" onclick="init(true, 60, '2')">Level 2</button> 
+<button type="button" onclick="init(true, 25, '3')">Level 3</button> -->
+
+<h2>Using the swarm, push the block into the goal!</h2>
+
+<canvas id="canvas" width="1250" height="528" style="background-color:#EEEEEE;" ></canvas>
+<div class= "instr"><p><center><b></p></center></b></div>
+<button type="button" onclick="window.location.reload()">Play Again!</button> 
+</body>
+<script type="text/javascript" src="shared/Box2dWeb-2.1.a.3.min.js"></script> <!-- box2d -->
+<script type="text/javascript" src="shared/jquery.min.js"></script> <!-- forms & strings, @ https://ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js -->
+<script type="text/javascript" src="shared/jcanvas.min.js"></script>
+<script type="text/javascript">
+// in Chrome, to view the console: Use the keyboard shortcut Command - Option - J (Mac) or Control -Shift -J (Windows/Linux).
+// TODO:
+// use selection box to change # of robots
+// scale the force applied by the robot size. so that all # of robots have equal force.
+// detect when robots at goals, stop timer
+var ROBOT_INPUT = { //robot commands
+    ROBOT_IDLE: 0x0,
+	ROBOT_LEFT    : 0x1, 
+	ROBOT_RIGHT   : 0x2, 
+	ROBOT_UP     : 0x4, 
+	ROBOT_DOWN     : 0x8,
+	WAIT : 0x40
+};
+
+var m_controlState = ROBOT_INPUT.ROBOT_IDLE;
+var TimeUp = false;
+var TimeMax = 120; //60;
+var FinalTime = 120;
+var savedtime = 0;
+var mapScale = 30;
+var canvasWidth = 1250;
+var canvasHeight = 500;
+var blockCOM_x = 0;
+var blockCOM_y = 0;
+var rAngle = 0;
+var goalAngle;
+var goalAngleNegative = -30;
+var goalAnglePositive = 30;
+var varCont = false;
+var objectWidth = 6;
+var objectWidth2 = 7;
+var objectWidth3 = 8;
+var pinkObject;
+
+var overall_time = null;
+var timestop = false;
+var timepause = false;
+function OEPLkeyPressed(e)
+{
+    //console.log('if ' + e.keyCode);
+        var day = new Date();
+        /* START Code change by Mahek */
+        switch(e.keyCode)
+        { 
+            // |= sets
+            case 37: 
+                    if(!TimeUp)
+                    {  
+                        //console.log('else ' + e.keyCode + ' --- ' + TimeUp);
+                        TimeUp = true;
+                        timetest=day.getTime();
+                        if(!overall_time) // set the start time
+                        {
+                            overall_time = day.getTime();
+                        }
+                        //console.log('else ' + e.keyCode + ' === ' + overall_time + ' --- ' + timetest);
+                    }else{ 
+                        m_controlState |= ROBOT_INPUT.ROBOT_LEFT;
+                        timetest=day.getTime();
+                        if(!overall_time) // set the start time
+                        {
+                            overall_time = day.getTime();
+                        } 
+                    }
+                    break; 
+            case 38: 
+                    if(!TimeUp)
+                    {  
+                        //console.log('else ' + e.keyCode + ' --- ' + TimeUp);
+                        TimeUp = true;
+                        timetest=day.getTime();
+                        if(!overall_time) // set the start time
+                        {
+                            overall_time = day.getTime();
+                        }
+                        //console.log('else ' + overall_time + ' --- ' + timetest);
+                    }else{
+                        m_controlState |= ROBOT_INPUT.ROBOT_UP;
+                        timetest=day.getTime();
+                        if(!overall_time) // set the start time
+                        {
+                            overall_time = day.getTime();
+                    }
+                    } 
+                    break;
+            case 39:
+                    if(!TimeUp)
+                    {  
+                        //console.log('else ' + e.keyCode + ' --- ' + TimeUp);
+                        TimeUp = true;
+                        timetest=day.getTime();
+                        if(!overall_time) // set the start time
+                        {
+                            overall_time = day.getTime();
+                        }
+                        //console.log('else ' + overall_time + ' --- ' + timetest);
+                    }else{ 
+                        m_controlState |= ROBOT_INPUT.ROBOT_RIGHT;
+                        timetest=day.getTime();
+                        if(!overall_time) // set the start time
+                        {
+                            overall_time = day.getTime();
+                        } 
+                    }
+                    break;
+            case 40: 
+                    if(!TimeUp)
+                    {  
+                        //console.log('else ' + e.keyCode + ' --- ' + TimeUp);
+                        TimeUp = true;
+                        timetest=day.getTime();
+                        if(!overall_time) // set the start time
+                        {
+                            overall_time = day.getTime();
+                        }
+                        //console.log('else ' + overall_time + ' --- ' + timetest);
+                    }else{
+                        m_controlState |= ROBOT_INPUT.ROBOT_DOWN;
+                        timetest=day.getTime();
+                        if(!overall_time) // set the start time
+                        {
+                            overall_time = day.getTime();
+                        }     
+                    }
+                    break;
+        }
+        /*timetest=day.getTime();
+        if(!overall_time) // set the start time
+        {
+            overall_time = day.getTime();
+        }*/
+        /* END Code change by Mahek */
+}
+
+function OEPLkeyUPed(e)
+{
+    var day = new Date();
+    /* START Code change by Mahek */
+    switch(e.keyCode)
+    { 
+        // &=~ resets
+        case 37: 
+            if(!TimeUp)
+            {}else{ 
+            m_controlState &= ~ROBOT_INPUT.ROBOT_LEFT;
+            timetest=day.getTime();
+            } 
+            break;
+        case 38:
+            if(!TimeUp)
+            {}else{ 
+            m_controlState &= ~ROBOT_INPUT.ROBOT_UP;
+            timetest=day.getTime();
+            } 
+            break;
+        case 39:
+            if(!TimeUp)
+            {}else{ 
+            m_controlState &= ~ROBOT_INPUT.ROBOT_RIGHT; 
+            timetest=day.getTime();
+            }
+            break;
+        case 40:
+            if(!TimeUp)
+            {}else{ 
+            m_controlState &= ~ROBOT_INPUT.ROBOT_DOWN;
+            timetest=day.getTime();
+            } 
+            break;
+    }
+    /*timetest=day.getTime();*/
+    /* END Code change by Mahek */
+} 
+
+function keypress_event()
+{
+    //allows users to control the robots with arrow keys
+    document.addEventListener("keydown", OEPLkeyPressed)
+
+    document.addEventListener("keyup", OEPLkeyUPed)
+}
+
+function init(levelstatus, numrobots, level) 
+{
+    // var overall_time= null;
+    var cov_desired_negative = -3;
+    var cov_desired_positive = 3;
+    var cov_desired = cov_desired_positive;
+    var done = false;
+    var covChange = false;
+    var goCenter = false;
+    var lessVariance = true;
+    var GoalRecieved = false;
+    var goButtom = false;
+    var joint;
+    var joint2;
+    var jointBox;
+    var jointBox2;
+    TimeUp = false;
+    timepause = false;
+    timestop = false;
+    var levelstatus = true;
+    
+    var   b2Vec2 = Box2D.Common.Math.b2Vec2
+    ,  b2AABB = Box2D.Collision.b2AABB
+    ,	b2BodyDef = Box2D.Dynamics.b2BodyDef
+    ,	b2Body = Box2D.Dynamics.b2Body
+    ,	b2FixtureDef = Box2D.Dynamics.b2FixtureDef
+    ,	b2Fixture = Box2D.Dynamics.b2Fixture
+    ,	b2World = Box2D.Dynamics.b2World
+    ,	b2MassData = Box2D.Collision.Shapes.b2MassData
+    ,	b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape
+    ,	b2CircleShape = Box2D.Collision.Shapes.b2CircleShape
+    ,	b2DebugDraw = Box2D.Dynamics.b2DebugDraw
+       b2RevoluteJointDef =  Box2D.Dynamics.Joints.b2RevoluteJointDef
+    ,  b2MouseJointDef =  Box2D.Dynamics.Joints.b2MouseJointDef
+    ;
+    
+    var timer = null;
+    overall_time = null;
+    var world = new b2World(
+           new b2Vec2(0, 00)    //gravity  setting to zero removes gravity
+        ,  true                 //allow sleep
+        );
+    var canvas = $('#canvas');
+    var context = canvas.get(0).getContext('2d');
+    
+    // used for?
+    var fixDef = new b2FixtureDef;
+    fixDef.density = 0.5;
+    fixDef.friction = 0;
+    fixDef.restitution = 1.0;  //bouncing value
+         
+    var bodyDef = new b2BodyDef;
+    //create enclosing boundary rectangles
+    bodyDef.userData = 'obstacle';  // canvas is {1120, 630}
+	bodyDef.type = b2Body.b2_staticBody;
+	
+	fixDef.shape = new b2PolygonShape;
+    fixDef.shape.SetAsBox(canvasWidth/mapScale, 2);//width, height
+    
+    bodyDef.position.Set(10, canvasHeight/ mapScale + 1.8); //bottom
+    
+    var bodyBottom = world.CreateBody(bodyDef);
+    bodyBottom.CreateFixture(fixDef);
+    
+    bodyDef.position.Set(2, -1.8); //top
+    
+    world.CreateBody(bodyDef).CreateFixture(fixDef);
+    
+    fixDef.shape.SetAsBox(2, canvasHeight/mapScale);//width, height
+    
+    bodyDef.position.Set(-1.8, 13); //left
+    
+    world.CreateBody(bodyDef).CreateFixture(fixDef);
+    
+    bodyDef.position.Set(canvasWidth/mapScale+1.8, 13); // right side
+    
+    world.CreateBody(bodyDef).CreateFixture(fixDef);
+
+    //Creating the box
+    bodyDef.type = b2Body.b2_dynamicBody;
+	fixDef.density = 1.0;
+	fixDef.friction = 0.0;
+    fixDef.restitution = 0.2;  //bouncing value
+    bodyDef.position.Set(35,9);
+    bodyDef.userData = 'theBox';
+    fixDef.shape = new b2PolygonShape;
+    //fixDef.shape.b2PolygonShape(6.0);
+    fixDef.shape.SetAsBox(2.0,objectWidth);
+    
+    var obst = world.CreateBody(bodyDef);
+    obst.CreateFixture(fixDef);
+    obst.m_angularDamping = 8.0;
+    obst.m_linearDamping = 8.0;
+    
+	var jointWidth = 1;
+    //Creating the joint box
+    bodyDef.type = b2Body.b2_dynamicBody;
+	fixDef.density = 1.0;
+	fixDef.friction = 0.0;
+	fixDef.restitution = 0;  //bouncing value
+	bodyDef.position.Set(canvasWidth/mapScale/3,canvasHeight/mapScale - objectWidth2 + 0.3- jointWidth);
+	bodyDef.userData = 'moveable';
+	fixDef.shape = new b2PolygonShape;
+	fixDef.shape.SetAsBox(0.1,objectWidth2);
+	
+    var obst = world.CreateBody(bodyDef);
+	obst.CreateFixture(fixDef);
+	obst.m_angularDamping = 12.0;
+	obst.m_linearDamping = 12.0;
+
+	//Creating the Joint
+	bodyDef.type = b2Body.b2_staticBody;
+	fixDef.density = 1.0;
+	fixDef.friction = 0.0;
+	fixDef.restitution = 0;  //bouncing value
+	bodyDef.position.Set(canvasWidth/mapScale/3,canvasHeight/mapScale-0.2);
+	bodyDef.userData = 'joint';
+	fixDef.shape = new b2CircleShape(jointWidth/2);
+	//fixDef.shape.SetAsBox(0.1,objectWidth);
+	
+    var joi = world.CreateBody(bodyDef);
+	joi.CreateFixture(fixDef);
+	joi.m_angularDamping = 8.0;
+	joi.m_linearDamping = 8.0;
+
+    //create some robots
+    bodyDef.type = b2Body.b2_dynamicBody;
+
+    function rnd2() {
+        return ((Math.random() + Math.random() + Math.random() + Math.random() + Math.random() + Math.random()) - 3) / 3;
+    }
+
+    ////create the robots
+    var numrobots = 60;//saving the function parameter
+    bodyDef.type = b2Body.b2_dynamicBody;
+    var robotrad = 0.2; //for SwarmControl.net, we used 0.2;
+	var rowLength = 12;//Math.floor(5/(2*robotrad));
+	var i = 1;                     //  set your counter to 1
+
+    ////loop to stop moving goal with target
+    //var chicken=true;
+
+    if((rAngle >=28)&&(rAngle <=30)){
+	   fixDef.density= 200;
+    }
+
+	fixDef.density = 0.4;
+	fixDef.friction = 0.8;
+    fixDef.restitution = 0.1;  //bouncing value
+    var m_Robot = new Array();
+
+    for(var i = 0; i < numrobots; ++i) 
+    {
+        fixDef.shape = new b2CircleShape(robotrad); //Math.random() + 0.1 //radius
+                 
+        bodyDef.userData = 'robot';
+
+        // start the robots in a Gaussian distribution
+        // bodyDef.position.x = 1120/60+10*rnd2();
+        // bodyDef.position.y = 630/60+10*rnd2();
+
+        ///  put the robots in a loose rectangle
+        bodyDef.position.x = 2+(i%rowLength)*2*robotrad;
+        bodyDef.position.y = 10-Math.floor(i/rowLength)*2*robotrad;
+
+        ///  put the robots in a tight rectangle
+        //   bodyDef.position.x = 0.5+(i%rowLength)*2*robotrad;
+        //   bodyDef.position.y = 19.5-Math.floor(i/rowLength)*2*robotrad;
+
+		m_Robot[i] = world.CreateBody(bodyDef);
+        m_Robot[i].CreateFixture(fixDef);
+        m_Robot[i].m_angularDamping = 0.8;
+        m_Robot[i].m_linearDamping = 0.8;
+		 
+    }
+		
+	var timetest = null;
+
+     //setup debug draw
+     var debugDraw = new b2DebugDraw();
+     debugDraw.SetSprite(document.getElementById("canvas").getContext("2d"));
+     debugDraw.SetDrawScale(mapScale);
+     debugDraw.SetFillAlpha(0.5);
+     debugDraw.SetLineThickness(1.0);
+     debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit);
+     world.SetDebugDraw(debugDraw);
+         
+    // window.setInterval(update, 1000 / 60); // not the way to do this!  http://blog.sethladd.com/2011/09/box2d-javascript-example-walkthrough.html
+    window.requestAnimFrame = (function(){
+        	return  window.requestAnimationFrame       || 
+        	window.webkitRequestAnimationFrame || 
+        	window.mozRequestAnimationFrame    || 
+        	window.oRequestAnimationFrame      || 
+        	window.msRequestAnimationFrame     || 
+        function(/* function */ callback, /* DOMElement */ element){
+			window.setTimeout(callback, 1000 / 60);
+		};
+	})();
+	
+
+    (function animloop(){
+        requestAnimFrame(animloop);
+        update();
+    })();
+		 
+
+    // AREA QUERY
+	
+	var udata = new Array(); //ARRAY TO STORE USERDATA
+	function worldquery()	
+	{
+	   var aabb2 = new b2AABB(); //CREATE AABB, axis-aligned bounding box
+		   aabb2.lowerBound.Set(10, 0); //TOP LEFT
+		   aabb2.upperBound.Set(20, 7); //BOTTOM RIGHT
+		   // Query the world for overlapping shapes.
+		   world.QueryAABB(getBodyCB2, aabb2);
+		   function getBodyCB2(fixture) {
+			   if(fixture)	{ //THIS WILL ITERATE THROUGH ALL THE FIXTURES IN THE PARTICULAR AREA
+			   	udata.push(fixture.GetBody().GetUserData()); //STORING ALL THE FIXTURES IN THE ARRAY
+			   	return true;
+			   }
+			}
+    }
+
+    function lineDistance( x1,y1,x2,y2)
+	{
+		var xs = 0;
+		var ys = 0;
+
+		xs = x1 - x2;
+		xs = xs * xs;
+
+		ys = y1- y2;
+		ys = ys * ys;
+
+		return Math.sqrt( xs + ys );
+    }
+    
+    var countRobotsAtGoal;
+	
+	/* START UPDATE */	
+    function update() 
+    {
+        //called each animation round
+		world.Step(1 / 60, 10, 10);
+		world.DrawDebugData();
+		world.ClearForces();
+
+		var sum_position_x = 0;
+		var sum_position_y = 0;
+		var sum2_x = 0;
+		var sum2_y = 0;
+		var desired_var_x;
+		var cov_xy = 0;
+		
+	    // try http://gamedev.stackexchange.com/questions/1366/box2d-get-bounding-box-of-a-body
+	    for(var i = 0; i < numrobots; ++i) {
+	    	sum_position_x += m_Robot[i].GetPosition().x;
+	    	sum_position_y += m_Robot[i].GetPosition().y;
+	    }
+	    var mean_position_x = sum_position_x / numrobots;
+	    var mean_position_y = sum_position_y / numrobots;
+	    for(var i = 0; i < numrobots; ++i) {
+	    	sum2_x += (m_Robot[i].GetPosition().x - mean_position_x) * (m_Robot[i].GetPosition().x - mean_position_x);
+	    	sum2_y += (m_Robot[i].GetPosition().y - mean_position_y) * (m_Robot[i].GetPosition().y - mean_position_y);
+	    	cov_xy=  cov_xy+ (m_Robot[i].GetPosition().x- mean_position_x)*(m_Robot[i].GetPosition().y - mean_position_y)/numrobots;
+	    }
+	    var var_x = sum2_x / numrobots;
+	    var var_y = sum2_y / numrobots;
+	    var min_desired_var_x = 6;
+	    var min_desired_var_y = 6;
+	    var goalX = 18.5;
+	    var goalY = 10.5;
+
+	    var diffeq = Math.sqrt( (var_x-var_y)*(var_x-var_y)/4 + cov_xy*cov_xy);
+	    var mindiffeq1 = Math.sqrt((min_desired_var_x -min_desired_var_y )*(min_desired_var_x-min_desired_var_y)/4 + cov_desired_positive*cov_desired_positive);
+	    var mindiffeq2 = Math.sqrt((min_desired_var_x -min_desired_var_y )*(min_desired_var_x-min_desired_var_y)/4 + cov_desired_negative*cov_desired_negative);
+	    var var_xp = (var_x+var_y)/2 + diffeq;
+	    var var_yp = (var_x+var_y)/2 - diffeq;
+	    var minvar_xp1 = (min_desired_var_x + min_desired_var_y)/2 + mindiffeq1 ;
+	    var minvar_yp1 = (min_desired_var_x + min_desired_var_y)/2 - mindiffeq1 ;
+
+	    var minvar_xp2 = (min_desired_var_x + min_desired_var_y)/2 + mindiffeq2 ;
+	    var minvar_yp2 = (min_desired_var_x + min_desired_var_y)/2 - mindiffeq2 ;
+
+	    var angle2 = 180/Math.PI*1/2*Math.atan2( 2*cov_xy, var_x-var_y);
+	    var angle_min_variance1 = 180/Math.PI*1/2*Math.atan2( 2*cov_desired_positive, min_desired_var_x-min_desired_var_y);
+	    var angle_min_variance2 = 180/Math.PI*1/2*Math.atan2( 2*cov_desired_negative, min_desired_var_x-min_desired_var_y);
+	    
+	    
+
+        //console.log("angle is : " + angle2);
+        window.addEventListener("keydown", function (e) {
+            if ([32, 37, 38, 39, 40].indexOf(e.keyCode) > -1) {
+                e.preventDefault();
+            }
+        }, false);
+
+        $("canvas").clearCanvas();
+  
+	    $("canvas").rotateCanvas({ x: 5 * mapScale, y: 5 * mapScale, rotate: angle})
+	               .drawArc({
+	                   fillStyle: "orange", 
+	                   x: 5 * mapScale, y: 5 * mapScale, 
+	                   radius: radius * mapScale})
+	               .restoreCanvas();
+
+        //draw robots and obstacles
+		for (b = world.GetBodyList() ; b; b = b.GetNext())
+		{
+		    var angleRad = b.GetAngle();
+			var angle = angleRad * (180 / Math.PI);
+			
+			for(f = b.GetFixtureList(); f; f = f.GetNext()) 
+			{
+				if (b.GetUserData() == 'robot')
+				{
+					var radius = f.GetShape().GetRadius();
+					var pos = b.GetPosition();
+					$("canvas").rotateCanvas({ x: pos.x * mapScale, y: pos.y * mapScale, rotate: angle})
+					           .drawArc({
+				                   strokeStyle: "lightblue", 
+				                   strokeWidth: 1, 
+				                   fillStyle: "blue", 
+				                   x: pos.x * mapScale, y: pos.y * mapScale, 
+				                   radius: radius * mapScale})
+					           .restoreCanvas();
+				}
+				else if (b.GetUserData() == 'joint')
+				{
+					var radiu = f.GetShape().GetRadius();
+					var pos = b.GetPosition();
+					joint = b;
+					$("canvas").rotateCanvas({x: pos.x * mapScale, y: pos.y * mapScale, rotate: angle})
+					           .drawArc({
+            						strokeStyle: "lightblue",
+            						strokeWidth: 1,
+            						fillStyle: "salmon",
+            						x: pos.x * mapScale, y: pos.y * mapScale,
+            						radius: radiu * mapScale})
+					           .restoreCanvas();
+				}
+				else if (b.GetUserData() == 'joint2')
+				{
+					var radiu = f.GetShape().GetRadius();
+					var pos = b.GetPosition();
+					joint2 = b;
+					$("canvas").rotateCanvas({x: pos.x * mapScale, y: pos.y * mapScale, rotate: angle})
+					           .drawArc({
+            						strokeStyle: "lightblue",
+            						strokeWidth: 1,
+            						fillStyle: "red",
+            						x: pos.x * mapScale, y: pos.y * mapScale,
+            						radius: radiu * mapScale})
+					           .restoreCanvas();
+			    }
+				else if (b.GetUserData() == 'obstacle' || b.GetUserData() == 'moveable' || b.GetUserData() == 'rectangle_ground'||b.GetUserData() == 'theBox'|| b.GetUserData() == 'moveable2' )
+				{
+					var X = f.GetShape().GetVertices()[1].x - f.GetShape().GetVertices()[0].x; 
+					var Y = f.GetShape().GetVertices()[2].y - f.GetShape().GetVertices()[1].y;
+                    
+					var pos = b.GetPosition();
+					  
+					var color = 'pink';
+					if(b.GetUserData() == 'obstacle')
+					{
+					    color = 'brown';
+					    if(timepause)
+					       color = 'green';
+					    else if(timestop)
+					       color = 'red';
+					}
+					else if (b.GetUserData() == 'theBox')
+					{
+						color = 'purple';
+						blockCOM_x = pos.x;
+						blockCOM_y = pos.y;
+						if(angle > 0)
+                            rAngle = angle;
+						//console.log(rAngle);
+						if ((rAngle >= 28) && (rAngle <= 30))
+                        {
+                            timepause = true;
+                            if((FinalTime>=60)&&(FinalTime<=120))
+                            {
+                            canvas.drawText({
+                                        strokeStyle: "green",
+                                        strokeWidth: 3,
+                                        x: 20 * mapScale, y: 9 * mapScale ,
+                                        fontSize: 40,
+                                        fontFamily: 'Verdana, sans-serif',
+                                        text: "You won Level 1 with 3/3 stars! Try moving onto Level 2!"})
+                                   .restoreCanvas();
+                                   
+                                drawStar1(550, 210, 25, 5, 0.5, 'blue', 'gold');
+                                drawStar1(615, 210, 25, 5, 0.5, 'blue', 'gold');
+                                drawStar1(680, 210, 25, 5, 0.5, 'blue', 'gold');
+                            }
+                            else if((FinalTime>=30)&&(FinalTime<=60))
+                            {
+                            canvas.drawText({
+                                        strokeStyle: "green",
+                                        strokeWidth: 3,
+                                        x: 20 * mapScale, y: 9 * mapScale ,
+                                        fontSize: 40,
+                                        fontFamily: 'Verdana, sans-serif',
+                                        text: "You won Level 1 with 2/3 stars! Try moving onto Level 2!"})
+                                   .restoreCanvas();
+                                drawStar1(550, 210, 25, 5, 0.5, 'blue', 'gold');
+                                drawStar1(615, 210, 25, 5, 0.5, 'blue', 'gold');
+                                drawStar1(680, 210, 25, 5, 0.5, 'blue', 'white');
+                            }
+                            else if((FinalTime>=0)&&(FinalTime<=30))
+                            {
+                            canvas.drawText({
+                                        strokeStyle: "green",
+                                        strokeWidth: 3,
+                                        x: 20 * mapScale, y: 9 * mapScale ,
+                                        fontSize: 40,
+                                        fontFamily: 'Verdana, sans-serif',
+                                        text: "You won Level 1 with 1/3 stars! Try moving onto Level 2!"})
+                                   .restoreCanvas();
+                                drawStar1(550, 210, 25, 5, 0.5, 'blue', 'gold');
+                                drawStar1(615, 210, 25, 5, 0.5, 'blue', 'white');
+                                drawStar1(680, 210, 25, 5, 0.5, 'blue', 'white');
+                            }      
+                            savedtime = '0.00';
+                            timestop = true; 
+                            TimeUp = false;
+                            //console.log('remove key listener' + timestop);
+                            document.removeEventListener('keydown', OEPLkeyPressed);
+                            document.removeEventListener('keyup', OEPLkeyUPed);
+                            //return;
+                        }
+					}
+					else if(b.GetUserData() == 'moveable')
+					{
+					  	color = 'pink';
+					  	blockCOM_x = pos.x;
+						blockCOM_y = pos.y;
+						//rAngle = angle;
+						jointBox = b;
+						//console.log(blockCOM_x+ " " + blockCOM_y);
+					}
+					else if(b.GetUserData() == 'moveable2')
+					{
+					  	color = 'pink';
+					  	blockCOM_x = pos.x;
+						blockCOM_y = pos.y;
+						//rAngle = angle;
+						jointBox2 = b;
+						//console.log(blockCOM_x+ " " + blockCOM_y);
+                    }
+					$("canvas").rotateCanvas({x: pos.x * mapScale, y: pos.y * mapScale, rotate: angle})
+					           .drawRect({
+            					  	fillStyle: color,
+            					  	x: pos.x * mapScale, y: pos.y * mapScale,
+            					  	width: X * mapScale,
+            					  	height: Y * mapScale,
+            					  	cornerRadius: 0})
+					           .restoreCanvas();
+					if(color == 'pink')
+					{
+                        //console.log('color : ' + color + ' Y ' + Y + ' mapScale ' + mapScale + ' pos.x ' + pos.x + ' pos.y ' + pos.y);
+                    }    
+                }
+
+            }
+        }
+        
+        $("#canvas").css( "opacity", "1.0" );
+        
+        if(timepause || false)
+        {
+            $("#canvas").css( "opacity", "0.7" );
+            var goalH = 2 * 2.1;
+            var goalW = 6 * 2.1;
+            
+            $("canvas").drawRect({
+                            strokeStyle: "rgba(0,128,0,0.8)",
+                            strokeWidth: 5,
+                            x: blockCOM_x * mapScale, y: blockCOM_y * mapScale,
+                            width: goalW * mapScale,
+                            height: goalH * mapScale,
+                            rotate: 120 })
+                        .restoreCanvas();
+ 
+            
+          
+            if((FinalTime>=60)&&(FinalTime<=120))
+            {
+            canvas.drawText({
+                        strokeStyle: "green",
+                        strokeWidth: 3,
+                        x: 20 * mapScale, y: 9 * mapScale ,
+                        fontSize: 40,
+                        fontFamily: 'Verdana, sans-serif',
+                        text: "You won Level 1 with 3/3 stars! Try moving onto Level 2!"})
+                   .restoreCanvas();
+                   
+                drawStar1(550, 210, 25, 5, 0.5, 'blue', 'gold');
+                drawStar1(615, 210, 25, 5, 0.5, 'blue', 'gold');
+                drawStar1(680, 210, 25, 5, 0.5, 'blue', 'gold');
+            }
+            else if((FinalTime>=30)&&(FinalTime<=60))
+            {
+            canvas.drawText({
+                        strokeStyle: "green",
+                        strokeWidth: 3,
+                        x: 20 * mapScale, y: 9 * mapScale ,
+                        fontSize: 40,
+                        fontFamily: 'Verdana, sans-serif',
+                        text: "You won Level 1 with 2/3 stars! Try moving onto Level 2!"})
+                   .restoreCanvas();
+                drawStar1(550, 210, 25, 5, 0.5, 'blue', 'gold');
+                drawStar1(615, 210, 25, 5, 0.5, 'blue', 'gold');
+                drawStar1(680, 210, 25, 5, 0.5, 'blue', 'white');
+            }
+            else if((FinalTime>=0)&&(FinalTime<=30))
+            {
+            canvas.drawText({
+                        strokeStyle: "green",
+                        strokeWidth: 3,
+                        x: 20 * mapScale, y: 9 * mapScale ,
+                        fontSize: 40,
+                        fontFamily: 'Verdana, sans-serif',
+                        text: "You won Level 1 with 1/3 stars! Try moving onto Level 2!"})
+                   .restoreCanvas();
+                drawStar1(550, 210, 25, 5, 0.5, 'blue', 'gold');
+                drawStar1(615, 210, 25, 5, 0.5, 'blue', 'white');
+                drawStar1(680, 210, 25, 5, 0.5, 'blue', 'white');
+            }
+            return;
+        }
+        else if(timestop)
+        {
+            $("#canvas").css( "opacity", "0.7" );
+            var goalH= 2*2.1;
+            var goalW = 6*2.1;
+                
+            $("canvas").drawRect({
+                            strokeStyle: "rgba(0,128,0,0.8)",
+                            strokeWidth: 5,
+                            x: blockCOM_x * mapScale, y: blockCOM_y * mapScale,
+                            width: goalW * mapScale,
+                            height: goalH * mapScale,
+                            rotate: 120 })
+                        .restoreCanvas();
+            canvas.drawText({
+                            strokeStyle: "red",
+                            strokeWidth: 3,
+                            x: 20*mapScale  , y: 9*mapScale ,
+                            fontSize: 40,
+                            fontFamily: 'Verdana, sans-serif',
+                            text: "Time's up! You were " + Math.round( (30 - rAngle) * 100 ) / 100 +" degrees off!"})
+                      .restoreCanvas();
+            
+            $("canvas").drawRect({
+                            fillStyle: "darkblue",
+                            x: 0.2* mapScale, y: 15.5 * 32,
+                            width: 15 * mapScale,
+                            height: 1 * mapScale,
+                            cornerRadius: 0,
+                            fromCenter: false})
+                       .drawRect({
+                            fillStyle: "darkcyan",
+                            x: 0.2 * mapScale, y: 15.5 * 32,
+                            width: ((TimeMax - elapsedTimeSec) / TimeMax) * 15 * mapScale,
+                            height: 1 * mapScale,
+                            cornerRadius: 0,
+                            fromCenter: false})
+            
+                $("canvas").drawText({
+                                fillStyle: "white",
+                                strokeStyle: "white",
+                                strokeWidth: 2,
+                                x: 8*mapScale  , y:16*32 ,
+                                fontSize: 30,
+                                fontFamily: 'Verdana, sans-serif',
+                                text: "Time remaining : "+ savedtime})
+                            .restoreCanvas();
+            return;
+        }
+        /*opacity of green rectangle*/
+        
+       
+            
+             
+                /* START Time UP */
+		if(TimeUp)
+		{
+		    var day = new Date();
+		    if(!overall_time) // set the start time
+            {
+                overall_time = day.getTime();
+            }
+			elapsedTimeSec = (day.getTime() - overall_time )/1000;
+			
+			//just commented
+            var joint_def = new b2RevoluteJointDef();
+				
+			joint_def.bodyA = jointBox;
+			joint_def.bodyB = joint;
+			joint_def.localAnchorA = new b2Vec2(0, objectWidth2);
+			joint_def.localAnchorB = new b2Vec2(0, 0);
+			world.CreateJoint(joint_def);
+			  
+			var cycleInSec = 50;
+
+			if(elapsedTimeSec % cycleInSec > cycleInSec / 2 )
+			{
+				done = false;
+			}
+			else
+			{
+				if(!done)
+				{
+					if(goalAngle == goalAngle + 20)
+					{
+						goalAngle = goalAnglePositive;
+						GoalRecieved = false;
+						done = true;
+					}
+					else if(goalAngle == goalAngle - 20)
+					{
+						goalAngle = goalAnglePositive;
+						GoalRecieved = false;
+						done = true;
+					}
+					else 
+					{
+						goalAngle = goalAngleNegative;	
+						GoalRecieved = false;
+						done = true;
+						return "done!"
+					}
+				}
+
+			}
+		
+            var impulseV=new b2Vec2(0,0);
+            var impulse = 10.0;
+            var day = new Date();
+
+			var e = 0.5;
+            if( Math.abs(-goalAngle - rAngle) < e )
+			{
+				GoalRecieved = true;
+			}
+			
+			if(!GoalRecieved)
+			{
+                deltaTheta =  rAngle - goalAngle;
+				var Rad = rAngle * Math.PI / 180;
+				var sign = deltaTheta/ Math.abs(deltaTheta);
+				//console.log("Sign: " + sign);
+				C = 10;//objectWidth/2+1;
+         	    if(!varCont)
+         	    {
+				    if(goalAngle <0){
+                        goalX = blockCOM_x + Math.sin(Rad) * objectWidth ;
+				        goalY = blockCOM_y - Math.cos(Rad) * (objectWidth * 2/3);//- Math.sqrt(var_yp));
+			        }
+				    else{
+				        goalX = blockCOM_x - Math.sin(Rad) * objectWidth ;
+				        goalY = blockCOM_y + Math.cos(Rad) * (objectWidth *2/3);//- Math.sqrt(var_yp)*4);
+				    }
+                }
+         	    else 
+         	    {
+                    if(goalAngle <0){
+                        goalX = 0 ;
+				        goalY = 0;
+				    }
+				    else{
+				        goalX = 0;
+				        goalY = 21;
+				    }
+                }
+			    var maxVar = 9;
+			    var minVar = 5;
+			    if (var_x > maxVar|| var_y > maxVar)
+			    {
+				    varCont = true;
+			    }
+                if(var_x < minVar && var_y < minVar)
+			    {
+				    varCont = false;
+			    }
+            }
+		    else
+            {
+                if(goalAngle <0){
+				    goalX = 2 ;
+				    goalY = 2;
+				}
+				else{
+				    goalX = 2;
+				    goalY = 19;
+				}
+            }
+			
+            //adds velocity to robots based on array key input
+            if (m_controlState == ROBOT_INPUT.ROBOT_LEFT)
+            {impulseV.x-=impulse;}
+            if (m_controlState == ROBOT_INPUT.ROBOT_UP)
+            {impulseV.y-=impulse;}
+            if (m_controlState == ROBOT_INPUT.ROBOT_RIGHT)
+            {impulseV.x+=impulse;}
+            if (m_controlState == ROBOT_INPUT.ROBOT_DOWN)
+            { impulseV.y += impulse; }
+
+            //allows for multiple key presses 
+            if (m_controlState & ROBOT_INPUT.ROBOT_LEFT)
+            { impulseV.x -= impulse; }
+            if (m_controlState & ROBOT_INPUT.ROBOT_UP)
+            { impulseV.y -= impulse; }
+            if (m_controlState & ROBOT_INPUT.ROBOT_RIGHT)
+            { impulseV.x += impulse; }
+            if (m_controlState & ROBOT_INPUT.ROBOT_DOWN)
+            { impulseV.y += impulse; }
+            
+            //normalize
+            var denom = Math.sqrt(impulseV.x * impulseV.x + impulseV.y * impulseV.y);
+            if (denom > impulse) {
+                impulseV.x = impulseV.x / denom;
+                impulseV.y = impulseV.y / denom;
+            }
+            vary= 1; //was 1
+            for (var i = 0; i < m_Robot.length; i++) {
+                mag = vary * Math.random();
+                ang = 2 * Math.PI * Math.random();
+                brownianImpulse = new b2Vec2(0,0);
+                brownianImpulse.x = mag * Math.cos(ang) + impulseV.x;
+                brownianImpulse.y = mag * Math.sin(ang) + impulseV.y;
+                m_Robot[i].ApplyForce(brownianImpulse, m_Robot[i].GetWorldPoint(new b2Vec2(10, 10)));
+            }
+
+            $("canvas").drawEllipse({
+            				strokeStyle: "red",
+            				strokeWidth: 5,
+            				x: mean_position_x * mapScale, y: mean_position_y * mapScale,
+            				width: 3 * mapScale * Math.sqrt(var_xp), height: 3 * mapScale*Math.sqrt(var_yp),
+            				rotate: angle2})
+                        .restoreCanvas();
+			var goalH= 2*2.1;
+			var goalW = 6*2.1;
+				
+			$("canvas").drawRect({
+    					  	strokeStyle: "rgba(0,128,0,0.8)",
+    					  	strokeWidth: 5,
+    					  	x: blockCOM_x * mapScale, y: blockCOM_y * mapScale,
+    					  	width: goalW * mapScale,
+    					  	height: goalH * mapScale,
+    					  	rotate: 90 - goalAngle})
+				  	    .restoreCanvas();
+
+		    $("canvas").drawArc({ //draw the average position
+	                      strokeStyle: "red",
+	                      strokeWidth: 5,
+	                      x: mean_position_x* mapScale, y: mean_position_y * mapScale,
+	                      radius: radius * mapScale})
+                        .restoreCanvas();
+            
+            b = world.GetBodyList() ;
+            var angleRad = b.GetAngle();
+			var angle = angleRad*(180/Math.PI);
+            while(angle > 90)
+			{
+				angle = angle - 180;
+			}
+			while(angle < -90)
+			{
+				angle = angle + 180;
+			}
+
+            var time = TimeMax - elapsedTimeSec;
+            FinalTime = time.toFixed(2);
+            if(timepause){
+               var stop = time;
+               savedtime = time;
+               timepause = false;
+               timestop = true;
+               //console.log(stop)
+            }
+            if((time <= 0) && (time >= -1000))
+            {
+			    canvas.drawText({
+                            strokeStyle: "black",
+                            strokeWidth: 3,
+                            x: 20 * mapScale  , y: 9 * mapScale ,
+                            fontSize: 40,
+                            fontFamily: 'Verdana, sans-serif',
+                            text: "Time's up! You were " + Math.round((30 - rAngle)* 100) / 100 +" degrees off!"})
+                      .restoreCanvas();
+            }
+		 
+	        if(overall_time)
+            {
+                var tmp_time_elapse = (TimeMax - elapsedTimeSec).toFixed(2);
+                //console.log(tmp_time_elapse);
+                if(tmp_time_elapse <= 0)
+                {
+                    //var stop = time;
+                    savedtime = '0.00';
+                    timestop = true; 
+                    TimeUp = false;
+                    //console.log('remove key listener' + timestop);
+                    document.removeEventListener('keydown', OEPLkeyPressed);
+                    document.removeEventListener('keyup', OEPLkeyUPed);
+                }
+                var timestring = "Time Remaining: " + tmp_time_elapse;
+			    $("canvas").drawRect({
+            					fillStyle: "darkblue",
+            					x: 0.2* mapScale, y: 15.5 * 32,
+            					width: 15 * mapScale,
+            					height: 1 * mapScale,
+            					cornerRadius: 0,
+            					fromCenter: false})
+                           .drawRect({
+            					fillStyle: "darkcyan",
+            					x: 0.2 * mapScale, y: 15.5 * 32,
+            					width: ((TimeMax-elapsedTimeSec)/TimeMax)*15 * mapScale,
+            					height: 1 * mapScale,
+            					cornerRadius: 0,
+            					fromCenter: false})
+                if(!timestop)
+                {
+				    if((time <=0)&&(time >=-1000))
+				    {
+				        $("canvas").drawText({
+					                   fillStyle: "white",
+					                   strokeStyle: "white",
+					                   strokeWidth: 2,
+					                   x: 8*mapScale  , y:16*32 ,
+					                   fontSize: 30,
+					                   fontFamily: 'Verdana, sans-serif',
+					                   text: "Time Remaining: 0.00"})
+                                    .restoreCanvas();
+                    }
+				    else
+				    {
+                        $("canvas").drawText({
+                    					fillStyle: "white",
+                    					strokeStyle: "white",
+                    					strokeWidth: 2,
+                    					x: 8*mapScale  , y:16*32 ,
+                    					fontSize: 30,
+                    					fontFamily: 'Verdana, sans-serif',
+                    					text: timestring})
+                                    .restoreCanvas();
+				    }
+				}
+				else
+				{
+					$("canvas").drawText({
+                					fillStyle: "white",
+                					strokeStyle: "white",
+                					strokeWidth: 2,
+                					x: 8*mapScale  , y:16*32 ,
+                					fontSize: 30,
+                					fontFamily: 'Verdana, sans-serif',
+                					text: "Time remaining"+ stop})
+				                .restoreCanvas();
+				}
+			}	
+			
+        }
+        else if(levelstatus)
+        {
+            if(!timestop)
+            {
+                keypress_event();
+                
+                $("canvas").drawEllipse({
+                                strokeStyle: "red",
+                                strokeWidth: 5,
+                                x: mean_position_x * mapScale, y: mean_position_y * mapScale,
+                                width: 3 * mapScale * Math.sqrt(var_xp), height: 3 * mapScale*Math.sqrt(var_yp),
+                                rotate: angle2})
+                            .restoreCanvas();
+                var goalH= 2*2.1;
+                var goalW = 6*2.1;
+                    
+                $("canvas").drawRect({
+                                strokeStyle: "rgba(0,128,0,0.8)",
+                                strokeWidth: 5,
+                                x: blockCOM_x * mapScale, y: blockCOM_y * mapScale,
+                                width: goalW * mapScale,
+                                height: goalH * mapScale,
+                                rotate: 120 })
+                            .restoreCanvas();
+    
+                $("canvas").drawArc({ //draw the average position
+                              strokeStyle: "red",
+                              strokeWidth: 5,
+                              x: mean_position_x* mapScale, y: mean_position_y * mapScale,
+                              radius: radius * mapScale})
+                            .restoreCanvas();
+                
+                $("canvas").drawText({
+                            fillStyle: "orange",
+                            strokeStyle: "blue",
+                            strokeWidth: 2,
+                            x: 4.4 * mapScale  , y: 7.5 * mapScale,
+                            fontSize: 18,
+                            fontFamily: 'Verdana, sans-serif',
+                            text: 'Swarm '})
+                        .drawText({
+                            fillStyle: "orange",
+                            strokeStyle: "pink",
+                            strokeWidth: 2,
+                            x: 14 * mapScale  , y: 1 * mapScale,
+                            fontSize: 18,
+                            fontFamily: 'Verdana, sans-serif',
+                            text: 'Obstacle '})
+                        .drawText({
+                            fillStyle: "orange",
+                            strokeStyle: "purple",
+                            strokeWidth: 2,
+                            x: 34.8 * mapScale  , y: 2.3 * mapScale,
+                            fontSize: 18,
+                            fontFamily: 'Verdana, sans-serif',
+                            text: 'Block'})
+                        .drawText({
+                            fillStyle: "orange",
+                            strokeStyle: "green",
+                            strokeWidth: 2,
+                            x: 29 * mapScale  , y: 13 * mapScale,
+                            fontSize: 18,
+                            fontFamily: 'Verdana, sans-serif',
+                            text: 'Goal '})
+                        .drawText({
+                            fillStyle: "orange",
+                            strokeStyle: "blue",
+                            fillStyle: "blue",
+                            strokeWidth: 2,
+                            x: 20*mapScale  , y: 8*mapScale ,
+                            fontSize: 35,
+                            fontFamily: 'impact strong',
+                            text: 'Press an arrow key to start moving the 60 robot swarm.'})
+                        .restoreCanvas(); 
+                        
+            }
+        }
+        else
+        {
+            if(!timestop)
+            {
+                $("canvas").drawText({
+                            strokeStyle: "blue",
+                            fillStyle: "blue",
+                            strokeWidth: 3,
+                            x: 20 * mapScale  , y: 8 * mapScale ,
+                            fontSize: 60,
+                            fontFamily: 'impact strong',
+                            text: "Using the swarm, push the block into the goal!"})
+            }else{
+                    $("canvas").drawText({
+                                    fillStyle: "orange",
+                                    strokeStyle: "red",
+                                    strokeWidth: 2,
+                                    x: 20 * mapScale, y: 14.5 * mapScale,
+                                    fontSize: 30,
+                                    fontFamily: 'Verdana, sans-serif',
+                                    text: 'Press an arrow key to start moving the 60 robot swarm.'})
+                                .restoreCanvas(); 
+                        
+                    
+                   //console.log(timestring);
+            }
+        }
+        /* END Time UP */
+       
+                  
+    }
+    /* END UPDATE */
+   
+
+    function drawStar(cx, cy, spikes, outerRadius, innerRadius, strokeStyle, fillStyle){
+        var rot = Math.PI/2*3;
+        var x = cx;
+        var y = cy;
+        var step = Math.PI/spikes;
+        ctx = context;
+        
+        ctx.beginPath();
+        ctx.fillStyle = "#C40043";
+        ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.moveTo(cx,cy-outerRadius)
+        for(i=0;i<spikes;i++){
+            x=cx+Math.cos(rot)*outerRadius;
+            y=cy+Math.sin(rot)*outerRadius;
+            ctx.lineTo(x,y)
+            rot+=step
+    
+            x=cx+Math.cos(rot)*innerRadius;
+            y=cy+Math.sin(rot)*innerRadius;
+            ctx.lineTo(x,y)
+            rot+=step
+        }
+        ctx.lineTo(cx,cy-outerRadius);
+        ctx.closePath();
+        ctx.lineWidth = 2;
+        //ctx.strokeStyle = strokeStyle;
+        //ctx.stroke();
+        ctx.fillStyle = fillStyle;
+        ctx.fill();
+    }
+    
+    function drawStar1(cx, cy, spikes, outerRadius, innerRadius, strokeStyle, fillStyle){
+        var rot = Math.PI/2*3;
+        var x = cx;
+        var y = cy;
+        var step = Math.PI/spikes;
+        ctx = context;
+        
+        ctx.beginPath();
+        ctx.fillStyle = "#C40043";
+        ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+        ctx.fill();
+        
+        var r = spikes;
+        var p = outerRadius;
+        var m = innerRadius;
+        ctx.fillStyle = fillStyle;
+        ctx.save();
+        ctx.beginPath();
+        ctx.translate(x, y);
+        ctx.moveTo(0,0-r);
+        for (var i = 0; i < p; i++)
+        {
+            ctx.rotate(Math.PI / p);
+            ctx.lineTo(0, 0 - (r*m));
+            ctx.rotate(Math.PI / p);
+            ctx.lineTo(0, 0 - r);
+        }
+        ctx.fill();
+        ctx.restore();
+        return;
+    }
+   
+    /**
+    * Returns a Gaussian Random Number around a normal distribution defined by the mean
+    * and standard deviation parameters.
+    *
+    * Uses the algorithm used in Java's random class, which in turn comes from
+    * Donald Knuth's implementation of the BoxÃ¢â‚¬â€œMuller transform.
+    *
+    * @param {Number} [mean = 0.0] The mean value, default 0.0
+    * @param {Number} [standardDeviation = 1.0] The standard deviation, default 1.0
+    * @return {Number} A random number
+    */
+    Math.randomGaussian = function(mean, standardDeviation) {
+        mean = defaultTo(mean, 0.0);
+        standardDeviation = defaultTo(standardDeviation, 1.0);
+
+        if (Math.randomGaussian.nextGaussian !== undefined) 
+        {
+  		    var nextGaussian = Math.randomGaussian.nextGaussian;
+  		    delete Math.randomGaussian.nextGaussian;
+  		    return (nextGaussian * standardDeviation) + mean;
+        } 
+        else 
+        {
+            var v1, v2, s, multiplier;
+  		    do {
+                v1 = 2 * Math.random() - 1; // between -1 and 1
+                v2 = 2 * Math.random() - 1; // between -1 and 1
+                s = v1 * v1 + v2 * v2;
+            } while (s >= 1 || s == 0);
+            multiplier = Math.sqrt(-2 * Math.log(s) / s);
+            Math.randomGaussian.nextGaussian = v2 * multiplier;
+            return (v1 * multiplier * standardDeviation) + mean;
+        }
+    };
+}
+</script>
+<style>
+    h2{
+        font-family: 'Times New Roman', Times, serif;
+        font-size: 40px;
+        color: blue;
+    }
+#cc	{
+ 	top: 600px;
+ 	width: 600px;
+ 	height: 200px;
+ 	margin: 0;
+ 	overflow: auto;
+}
+ /*.time {
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+font-size: 50px;
+    color:  blue;
+}*/
+.instr{
+	  position: relative;
+	font-size: 25px;
+	
+bottom: 450px;
+    color: blue;
+}
+ </style>
+
+ </html>
